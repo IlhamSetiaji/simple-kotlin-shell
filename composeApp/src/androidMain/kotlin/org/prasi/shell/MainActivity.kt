@@ -2,7 +2,6 @@ package org.prasi.shell
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -22,7 +21,7 @@ import co.touchlab.kermit.Logger
 import java.io.File
 import org.prasi.shell.bridges.CameraHandler
 import org.prasi.shell.bridges.FilePickerHandler
-g
+
 // class MainActivity : ComponentActivity() {
 
 class MainActivity : AppCompatActivity() {
