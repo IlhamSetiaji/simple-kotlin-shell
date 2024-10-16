@@ -9,29 +9,20 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
-import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import co.touchlab.kermit.Logger
 import java.io.File
-import fi.iki.elonen.NanoHTTPD
 import org.prasi.shell.bridges.CameraHandler
 import org.prasi.shell.bridges.FilePickerHandler
-import org.prasi.shell.utils.FileUtils
-import java.io.FileInputStream
-import java.io.InputStream
-import java.util.UUID
-
+g
 // class MainActivity : ComponentActivity() {
 
 class MainActivity : AppCompatActivity() {
