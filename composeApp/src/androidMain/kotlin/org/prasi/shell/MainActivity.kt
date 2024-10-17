@@ -32,7 +32,6 @@ class MainActivity : AppCompatActivity() {
     private val fileMap = mutableMapOf<String, File>()
     private val cameraHandler = CameraHandler(this)
     private val filePickerHandler = FilePickerHandler(this)
-    private var imagePath: String? = null
     private lateinit var context: Context
 
     override fun onCreate(savedInstanceState: Bundle?) {
