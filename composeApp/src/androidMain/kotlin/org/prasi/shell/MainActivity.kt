@@ -145,7 +145,7 @@ class MainActivity : AppCompatActivity() {
      fun openWithChrome(url: String) {
         Logger.i { "Opening URL: $url" }
         if (url.isNotEmpty()) {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("http://localhost:8080/$url")).apply {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("$url")).apply {
                 setPackage("com.android.chrome")
             }
             try {
