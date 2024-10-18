@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import co.touchlab.kermit.Logger
 import java.io.File
 import org.prasi.shell.bridges.CameraHandler
+import org.prasi.shell.bridges.CameraScannerHandler
 import org.prasi.shell.bridges.FilePickerHandler
 
 // class MainActivity : ComponentActivity() {
@@ -28,10 +29,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var cameraLauncher: ActivityResultLauncher<Intent>
     private lateinit var filePickerLauncher: ActivityResultLauncher<String>
+    private lateinit var scannerLauncher: ActivityResultLauncher<Intent>
     private var localWebServer: LocalWebServer? = null
     private val fileMap = mutableMapOf<String, File>()
     private val cameraHandler = CameraHandler(this)
     private val filePickerHandler = FilePickerHandler(this)
+    private val scannerHandler = CameraScannerHandler(this)
     private lateinit var context: Context
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,12 +52,18 @@ class MainActivity : AppCompatActivity() {
         filePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             filePickerHandler.handleFilePicked(uri, fileMap, webView, context)
         }
+
+        scannerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            scannerHandler.handleScannerResult(result.resultCode, result.data, webView)
+        }
+
         setupLocalWebServer()
         setupWebView(cameraLauncher, filePickerLauncher)
     }
 
     private fun setupWebView(cameraLauncher: ActivityResultLauncher<Intent>, filePickerLauncher: ActivityResultLauncher<String>) {
         webView = findViewById(R.id.webView)
+        webView.clearCache(true)
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -125,7 +134,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         webView.webViewClient = WebViewClient()
-        webView.addJavascriptInterface(WebAppInterface(this, cameraHandler, filePickerHandler, cameraLauncher, filePickerLauncher), "AndroidBridge")
+        webView.addJavascriptInterface(WebAppInterface(this, cameraHandler, filePickerHandler, scannerHandler, cameraLauncher, filePickerLauncher, scannerLauncher), "AndroidBridge")
         webView.loadUrl("https://prasi.avolut.com/prod/02774758-4585-41e2-b74d-707329cce21d/home")
     }
 

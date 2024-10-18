@@ -25,6 +25,7 @@ kotlin {
             implementation("org.nanohttpd:nanohttpd:2.3.1")
             implementation("co.touchlab:kermit:2.0.3")
             implementation("androidx.appcompat:appcompat:1.6.1")
+            implementation ("com.journeyapps:zxing-android-embedded:4.3.0")
         }
         commonMain.dependencies {
             implementation(compose.runtime)

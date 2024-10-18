@@ -39,7 +39,7 @@ class CameraHandler(private val activity: MainActivity) {
             val imageFile = File(imagePath)
             val fileName = imageFile.name
             fileMap[fileName] = imageFile
-            saveImageToGallery(activity, imageFile)
+//            saveImageToGallery(activity, imageFile)
 
             val localUrl = "http://localhost:8080/$fileName"
             webView.evaluateJavascript("window.onCameraResult('$localUrl')", null)
