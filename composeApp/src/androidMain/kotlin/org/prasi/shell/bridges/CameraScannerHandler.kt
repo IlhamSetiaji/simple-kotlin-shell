@@ -18,7 +18,8 @@ class CameraScannerHandler(private val activity: MainActivity) {
             setBeepEnabled(true)
             setBarcodeImageEnabled(true)
         }
-        integrator.initiateScan()
+        scannerLauncher.launch(integrator.createScanIntent());
+//        integrator.initiateScan()
     }
 
     fun handleScannerResult(resultCode: Int, data: Intent?, webView: WebView) {
