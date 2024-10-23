@@ -24,6 +24,8 @@ import org.prasi.shell.bridges.CameraScannerHandler
 import org.prasi.shell.bridges.FilePickerHandler
 import android.widget.Toast
 import android.Manifest
+import android.app.AlertDialog
+import org.prasi.shell.utils.VersionUtils
 
 // class MainActivity : ComponentActivity() {
 
@@ -38,13 +40,43 @@ class MainActivity : AppCompatActivity() {
     private val filePickerHandler = FilePickerHandler(this)
     private val scannerHandler = CameraScannerHandler(this)
     private lateinit var context: Context
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            Toast.makeText(this, "Camera and file permission granted", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(this, "Camera and file permission denied", Toast.LENGTH_SHORT).show()
+
+    private fun checkAppVersion() {
+        val currentVersion = VersionUtils.getCurrentVersion(this)
+        val storedVersion = VersionUtils.getStoredVersion(this)
+
+        if (storedVersion == null || storedVersion != currentVersion) {
+            showChangelogDialog()
+            VersionUtils.storeVersion(this, currentVersion)
+        }
+    }
+
+    private fun showChangelogDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Changelog")
+            .setMessage("Welcome to the new version of the app!\n\n• Added camera and file picker functionality\n• Added QR code scanner functionality\n• Added support for Android 10")
+            .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+            .create()
+            .show()
+    }
+
+    companion object {
+        private const val PERMISSION_REQUEST_CODE = 1001
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) &&
+                (grantResults.size > 1 && grantResults[1] == PackageManager.PERMISSION_GRANTED)) {
+                Toast.makeText(this, "Camera and file permission granted", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Camera and file permission denied", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -56,18 +88,21 @@ class MainActivity : AppCompatActivity() {
         if (ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED) {
-        } else {
-            requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-        }
-        if (ContextCompat.checkSelfPermission(
+            ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.READ_EXTERNAL_STORAGE
             ) == PackageManager.PERMISSION_GRANTED) {
         } else {
-            requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+            requestPermissions(
+                arrayOf(
+                    Manifest.permission.CAMERA,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                ),
+                PERMISSION_REQUEST_CODE
+            )
         }
 
+        checkAppVersion()
         cameraLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK && cameraHandler.imagePath != null) {
                 Logger.i { "Camera result: $result" }
