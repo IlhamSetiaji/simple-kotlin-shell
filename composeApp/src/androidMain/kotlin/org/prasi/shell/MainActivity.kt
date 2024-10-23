@@ -22,6 +22,8 @@ import java.io.File
 import org.prasi.shell.bridges.CameraHandler
 import org.prasi.shell.bridges.CameraScannerHandler
 import org.prasi.shell.bridges.FilePickerHandler
+import android.widget.Toast
+import android.Manifest
 
 // class MainActivity : ComponentActivity() {
 
@@ -36,11 +38,35 @@ class MainActivity : AppCompatActivity() {
     private val filePickerHandler = FilePickerHandler(this)
     private val scannerHandler = CameraScannerHandler(this)
     private lateinit var context: Context
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            Toast.makeText(this, "Camera and file permission granted", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Camera and file permission denied", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         context = this
+
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED) {
+        } else {
+            requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED) {
+        } else {
+            requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
 
         cameraLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK && cameraHandler.imagePath != null) {
