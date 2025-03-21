@@ -196,7 +196,7 @@ class MainActivity : AppCompatActivity() {
         }
         webView.webViewClient = WebViewClient()
         webView.addJavascriptInterface(WebAppInterface(this, cameraHandler, filePickerHandler, scannerHandler, cameraLauncher, filePickerLauncher, scannerLauncher), "AndroidBridge")
-        webView.loadUrl("https://prasi.avolut.com/prod/02774758-4585-41e2-b74d-707329cce21d/home")
+        webView.loadUrl("https://wareify.avolut.com/home")
     }
 
     private fun setupLocalWebServer() {
