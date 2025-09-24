@@ -63,12 +63,22 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 1001
-        private val REQUIRED_PERMISSIONS = arrayOf(
-            Manifest.permission.CAMERA,
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
+        private fun getRequiredPermissions(): Array<String> {
+            val permissions = mutableListOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                permissions.add(Manifest.permission.READ_MEDIA_IMAGES)
+                permissions.add(Manifest.permission.READ_MEDIA_VIDEO)
+                permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
+            } else {
+                permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+                permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+            return permissions.toTypedArray()
+        }
     }
 
     override fun onRequestPermissionsResult(
@@ -93,7 +103,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         context = this
 
-        val missingPermissions = REQUIRED_PERMISSIONS.filter {
+        val missingPermissions = getRequiredPermissions().filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
         if (missingPermissions.isNotEmpty()) {
@@ -203,7 +213,7 @@ class MainActivity : AppCompatActivity() {
         }
         webView.webViewClient = WebViewClient()
         webView.addJavascriptInterface(WebAppInterface(this, cameraHandler, filePickerHandler, scannerHandler, cameraLauncher, filePickerLauncher, scannerLauncher), "AndroidBridge")
-        webView.loadUrl("https://b8f49c171102.ngrok-free.app/location-share")
+        webView.loadUrl("https://8ddfe0b8d585.ngrok-free.app/location-share")
     }
 
     private fun setupLocalWebServer() {
