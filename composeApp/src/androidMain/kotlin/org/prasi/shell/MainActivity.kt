@@ -144,6 +144,18 @@ class MainActivity : AppCompatActivity() {
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             mediaPlaybackRequiresUserGesture = false
             setGeolocationEnabled(true)
+
+            // Additional settings for better domain compatibility
+            cacheMode = WebSettings.LOAD_DEFAULT
+            useWideViewPort = true
+            loadWithOverviewMode = true
+            databaseEnabled = true
+            setSupportZoom(true)
+            builtInZoomControls = true
+            displayZoomControls = false
+
+            // Set a standard user agent to avoid blocking
+            userAgentString = "Mozilla/5.0 (Linux; Android ${Build.VERSION.RELEASE}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
         }
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
@@ -210,10 +222,75 @@ class MainActivity : AppCompatActivity() {
                 // Automatically grant geolocation permission
                 callback.invoke(origin, true, false)
             }
+
+            override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                super.onProgressChanged(view, newProgress)
+                Logger.d { "WebView loading progress: $newProgress%" }
+            }
+
+            override fun onConsoleMessage(message: android.webkit.ConsoleMessage?): Boolean {
+                message?.let {
+                    Logger.d { "WebView Console [${it.messageLevel()}]: ${it.message()} -- From line ${it.lineNumber()} of ${it.sourceId()}" }
+                }
+                return super.onConsoleMessage(message)
+            }
         }
-        webView.webViewClient = WebViewClient()
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                Logger.i { "WebView started loading: $url" }
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                Logger.i { "WebView finished loading: $url" }
+            }
+
+            override fun onReceivedError(
+                view: WebView?,
+                errorCode: Int,
+                description: String?,
+                failingUrl: String?
+            ) {
+                super.onReceivedError(view, errorCode, description, failingUrl)
+                Logger.e { "WebView Error: Code=$errorCode, Description=$description, URL=$failingUrl" }
+                Toast.makeText(context, "WebView Error: $description", Toast.LENGTH_LONG).show()
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView?,
+                request: android.webkit.WebResourceRequest?,
+                errorResponse: android.webkit.WebResourceResponse?
+            ) {
+                super.onReceivedHttpError(view, request, errorResponse)
+                Logger.e { "HTTP Error: ${errorResponse?.statusCode} ${errorResponse?.reasonPhrase} - URL: ${request?.url}" }
+            }
+
+            override fun onReceivedSslError(
+                view: WebView?,
+                handler: android.webkit.SslErrorHandler?,
+                error: android.net.http.SslError?
+            ) {
+                Logger.w { "SSL Error: ${error?.toString()} for URL: ${error?.url}" }
+                // For production domains with valid SSL, proceed
+                // WARNING: Only use this if you trust the domain
+                handler?.proceed()
+            }
+
+            override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+                val url = request?.url?.toString()
+                Logger.d { "shouldOverrideUrlLoading: $url" }
+                return false
+            }
+        }
         webView.addJavascriptInterface(WebAppInterface(this, cameraHandler, filePickerHandler, scannerHandler, cameraLauncher, filePickerLauncher, scannerLauncher), "AndroidBridge")
-        webView.loadUrl("https://8ddfe0b8d585.ngrok-free.app/location-share")
+
+        val headers = mutableMapOf<String, String>()
+        headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        headers["ngrok-skip-browser-warning"] = "69420"
+
+        Logger.i { "Loading URL: https://twindi.aisin-indonesia.co.id/location-share" }
+        webView.loadUrl("https://twindi.aisin-indonesia.co.id/location-share", headers)
     }
 
     private fun setupLocalWebServer() {
