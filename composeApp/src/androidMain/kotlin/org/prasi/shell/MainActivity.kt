@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -62,6 +63,22 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 1001
+        private fun getRequiredPermissions(): Array<String> {
+            val permissions = mutableListOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                permissions.add(Manifest.permission.READ_MEDIA_IMAGES)
+                permissions.add(Manifest.permission.READ_MEDIA_VIDEO)
+                permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
+            } else {
+                permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+                permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+            return permissions.toTypedArray()
+        }
     }
 
     override fun onRequestPermissionsResult(
@@ -71,11 +88,12 @@ class MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_CODE) {
-            if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) &&
-                (grantResults.size > 1 && grantResults[1] == PackageManager.PERMISSION_GRANTED)) {
-                Toast.makeText(this, "Camera and file permission granted", Toast.LENGTH_SHORT).show()
+            val denied = permissions.indices.filter { grantResults[it] != PackageManager.PERMISSION_GRANTED }
+            if (denied.isEmpty()) {
+                Toast.makeText(this, "All permissions granted", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this, "Camera and file permission denied", Toast.LENGTH_SHORT).show()
+                val deniedNames = denied.map { permissions[it] }
+                Toast.makeText(this, "Permissions denied: $deniedNames", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -85,21 +103,11 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         context = this
 
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED) {
-        } else {
-            requestPermissions(
-                arrayOf(
-                    Manifest.permission.CAMERA,
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-                ),
-                PERMISSION_REQUEST_CODE
-            )
+        val missingPermissions = getRequiredPermissions().filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missingPermissions.isNotEmpty()) {
+            requestPermissions(missingPermissions.toTypedArray(), PERMISSION_REQUEST_CODE)
         }
 
         checkAppVersion()
@@ -135,6 +143,19 @@ class MainActivity : AppCompatActivity() {
             allowUniversalAccessFromFileURLs = true
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             mediaPlaybackRequiresUserGesture = false
+            setGeolocationEnabled(true)
+
+            // Additional settings for better domain compatibility
+            cacheMode = WebSettings.LOAD_DEFAULT
+            useWideViewPort = true
+            loadWithOverviewMode = true
+            databaseEnabled = true
+            setSupportZoom(true)
+            builtInZoomControls = true
+            displayZoomControls = false
+
+            // Set a standard user agent to avoid blocking
+            userAgentString = "Mozilla/5.0 (Linux; Android ${Build.VERSION.RELEASE}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
         }
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
@@ -193,10 +214,83 @@ class MainActivity : AppCompatActivity() {
                     Logger.d { "onPermissionRequest denied permissions: ${request.resources}" }
                 }
             }
+
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String,
+                callback: GeolocationPermissions.Callback
+            ) {
+                // Automatically grant geolocation permission
+                callback.invoke(origin, true, false)
+            }
+
+            override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                super.onProgressChanged(view, newProgress)
+                Logger.d { "WebView loading progress: $newProgress%" }
+            }
+
+            override fun onConsoleMessage(message: android.webkit.ConsoleMessage?): Boolean {
+                message?.let {
+                    Logger.d { "WebView Console [${it.messageLevel()}]: ${it.message()} -- From line ${it.lineNumber()} of ${it.sourceId()}" }
+                }
+                return super.onConsoleMessage(message)
+            }
         }
-        webView.webViewClient = WebViewClient()
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                Logger.i { "WebView started loading: $url" }
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                Logger.i { "WebView finished loading: $url" }
+            }
+
+            override fun onReceivedError(
+                view: WebView?,
+                errorCode: Int,
+                description: String?,
+                failingUrl: String?
+            ) {
+                super.onReceivedError(view, errorCode, description, failingUrl)
+                Logger.e { "WebView Error: Code=$errorCode, Description=$description, URL=$failingUrl" }
+                Toast.makeText(context, "WebView Error: $description", Toast.LENGTH_LONG).show()
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView?,
+                request: android.webkit.WebResourceRequest?,
+                errorResponse: android.webkit.WebResourceResponse?
+            ) {
+                super.onReceivedHttpError(view, request, errorResponse)
+                Logger.e { "HTTP Error: ${errorResponse?.statusCode} ${errorResponse?.reasonPhrase} - URL: ${request?.url}" }
+            }
+
+            override fun onReceivedSslError(
+                view: WebView?,
+                handler: android.webkit.SslErrorHandler?,
+                error: android.net.http.SslError?
+            ) {
+                Logger.w { "SSL Error: ${error?.toString()} for URL: ${error?.url}" }
+                // For production domains with valid SSL, proceed
+                // WARNING: Only use this if you trust the domain
+                handler?.proceed()
+            }
+
+            override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+                val url = request?.url?.toString()
+                Logger.d { "shouldOverrideUrlLoading: $url" }
+                return false
+            }
+        }
         webView.addJavascriptInterface(WebAppInterface(this, cameraHandler, filePickerHandler, scannerHandler, cameraLauncher, filePickerLauncher, scannerLauncher), "AndroidBridge")
-        webView.loadUrl("https://prasi.avolut.com/prod/02774758-4585-41e2-b74d-707329cce21d/home")
+
+        val headers = mutableMapOf<String, String>()
+        headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        headers["ngrok-skip-browser-warning"] = "69420"
+
+        Logger.i { "Loading URL: https://twindi.aisin-indonesia.co.id/location-share" }
+        webView.loadUrl("https://twindi.aisin-indonesia.co.id/location-share", headers)
     }
 
     private fun setupLocalWebServer() {
